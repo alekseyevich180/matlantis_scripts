@@ -1,0 +1,28 @@
+from ase.build import molecule
+from fairchem.core import pretrained_mlip, FAIRChemCalculator
+import os, torch
+
+# 可选：稳定 CPU 线程数
+n = max(1, min(8, os.cpu_count() or 1))
+os.environ.setdefault("OMP_NUM_THREADS", str(n))
+os.environ.setdefault("MKL_NUM_THREADS", str(n))
+torch.set_num_threads(n)
+
+device = "cpu"
+predictor = pretrained_mlip.get_predict_unit("uma-s-1p1", device=device)
+
+# singlet CH2
+singlet = molecule("CH2")                 # 分子几何
+singlet.info.update({"spin": 1, "charge": 0})
+singlet.calc = FAIRChemCalculator(predictor, task_name="omol")
+
+# triplet CH2
+triplet = singlet.copy()
+triplet.info.update({"spin": 3, "charge": 0})
+triplet.calc = FAIRChemCalculator(predictor, task_name="omol")
+
+Es = singlet.get_potential_energy()
+Et = triplet.get_potential_energy()
+print("E_singlet (eV):", Es)
+print("E_triplet (eV):", Et)
+print("ΔE = E_triplet - E_singlet (eV):", Et - Es)
